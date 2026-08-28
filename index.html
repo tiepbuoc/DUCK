@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DUCK CARE · Bảng theo dõi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root {
+    --ink: #0f2a24;
+    --paper: #f6f4ee;
+    --panel: #ffffff;
+    --line: #dfe4de;
+    --teal: #15a85f;
+    --teal-deep: #0c6b3d;
+    --teal-soft: #e4f4ea;
+    --amber: #c68a1f;
+    --amber-soft: #fbf0dc;
+    --clay: #c1502e;
+    --clay-soft: #f7e3db;
+    --muted: #6b7570;
+    --shadow: 0 1px 2px rgba(15,42,36,0.06), 0 8px 24px rgba(15,42,36,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh;
+  }
+  .brand-mark { font-family: Georgia, "Times New Roman", serif; font-weight: 700; letter-spacing: -0.01em; }
+
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    position: sticky; top: 0; z-index: 5;
+  }
+  header.top .title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  header.top .title .brand-mark { font-size: 19px; }
+  header.top .title .tag { font-size: 12.5px; color: var(--muted); }
+  header.top .live {
+    font-size: 11.5px; color: var(--teal-deep); background: var(--teal-soft);
+    padding: 4px 10px; border-radius: 999px; display: flex; align-items: center; gap: 6px;
+  }
+  header.top .live .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-deep); }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+  /* ---------- stat cards ---------- */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .stat-card .num { font-size: 26px; font-weight: 700; font-family: Georgia, serif; }
+  .stat-card .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stat-card.lvl1 .num { color: var(--teal-deep); }
+  .stat-card.lvl2 .num { color: var(--amber); }
+  .stat-card.lvl3 .num { color: var(--clay); }
+
+  /* ---------- charts ---------- */
+  .charts-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 14px; margin-bottom: 20px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .panel-head { padding: 14px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .panel-head h2 { font-size: 14.5px; margin: 0; }
+  .panel-head .hint { font-size: 12px; color: var(--muted); }
+  .chart-body { padding: 16px 18px; }
+  .chart-body.donut { display: flex; align-items: center; justify-content: center; }
+  .chart-canvas-wrap { position: relative; width: 100%; }
+  .chart-canvas-wrap.donut { max-width: 220px; height: 220px; }
+  .chart-canvas-wrap.bars { height: 260px; }
+
+  /* ---------- list ---------- */
+  .empty-state { padding: 50px 20px; text-align: center; color: var(--muted); }
+  .empty-state .em { font-size: 34px; margin-bottom: 8px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--muted); padding: 10px 18px; border-bottom: 1px solid var(--line);
+  }
+  tbody tr { border-bottom: 1px solid var(--line); cursor: pointer; }
+  tbody tr:hover { background: #fbfaf6; }
+  tbody td { padding: 12px 18px; vertical-align: middle; }
+  .name-cell { font-weight: 600; }
+  .id-cell { color: var(--muted); font-size: 12px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .badge.lvl1 { background: var(--teal-soft); color: var(--teal-deep); }
+  .badge.lvl2 { background: var(--amber-soft); color: var(--amber); }
+  .badge.lvl3 { background: var(--clay-soft); color: var(--clay); }
+  .score-cell { font-variant-numeric: tabular-nums; }
+
+  /* card list for mobile */
+  .card-list { display: none; }
+  .row-card {
+    padding: 14px 16px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .row-card:active { background: #fbfaf6; }
+  .row-card .left .name-cell { font-size: 14.5px; }
+  .row-card .right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+  /* ---------- detail drawer ---------- */
+  #overlay { display: none; position: fixed; inset: 0; background: rgba(15,42,36,0.35); z-index: 10; }
+  #drawer {
+    display: none; position: fixed; top: 0; right: 0; bottom: 0;
+    width: min(480px, 100vw); background: var(--panel); z-index: 11;
+    overflow-y: auto; box-shadow: -12px 0 32px rgba(0,0,0,0.15);
+  }
+  #drawer .drawer-head { padding: 20px 22px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+  #drawer .drawer-head .close { float: right; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); }
+  #drawer .drawer-head h3 { margin: 0 0 4px; font-size: 17px; padding-right: 30px; }
+  #drawer .drawer-head .meta { font-size: 12.5px; color: var(--muted); }
+  #drawer .qa-list { padding: 6px 22px 30px; }
+  .qa-item { padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .qa-item .q { font-size: 13.5px; margin-bottom: 6px; }
+  .qa-item .qnum { color: var(--teal-deep); font-weight: 700; margin-right: 4px; }
+  .qa-item .a-scale { display: flex; gap: 4px; }
+  .a-dot {
+    width: 25px; height: 25px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    font-size: 11.5px; background: var(--paper); border: 1px solid var(--line); color: var(--muted);
+  }
+  .a-dot.active { background: var(--teal-deep); color: #fff; border-color: var(--teal-deep); }
+
+  @media (max-width: 860px) {
+    .charts-row { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    table { display: none; }
+    .card-list { display: block; }
+    main { padding: 14px; }
+    header.top { padding: 12px 14px; }
+    #drawer { width: 100vw; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="title">
+    <span class="brand-mark">🦆 DUCK CARE</span>
+    <span class="tag">Bảng theo dõi khảo sát</span>
+  </div>
+  <span class="live"><span class="dot"></span>Cập nhật trực tiếp</span>
+</header>
+
+<main>
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="num" id="statTotal">–</div>
+      <div class="lbl">Lượt hoàn thành</div>
+    </div>
+    <div class="stat-card lvl1">
+      <div class="num" id="statLvl1">–</div>
+      <div class="lbl">🟢 Mức 1</div>
+    </div>
+    <div class="stat-card lvl2">
+      <div class="num" id="statLvl2">–</div>
+      <div class="lbl">🟡 Mức 2</div>
+    </div>
+    <div class="stat-card lvl3">
+      <div class="num" id="statLvl3">–</div>
+      <div class="lbl">🟠 Mức 3</div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Phân bố theo mức</h2>
+      </div>
+      <div class="chart-body donut">
+        <div class="chart-canvas-wrap donut"><canvas id="levelDonut"></canvas></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Điểm trung bình theo nhóm yếu tố</h2>
+        <span class="hint">Thang điểm trung bình 1–5 mỗi nhóm câu hỏi</span>
+      </div>
+      <div class="chart-body">
+        <div class="chart-canvas-wrap bars"><canvas id="categoryBars"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Học sinh đã làm khảo sát</h2>
+      <span class="hint">Bấm vào 1 dòng để xem chi tiết từng câu trả lời</span>
+    </div>
+    <div id="tableWrap">
+      <div class="empty-state">
+        <div class="em">⏳</div>
+        Đang tải dữ liệu…
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="overlay"></div>
+<div id="drawer">
+  <div class="drawer-head">
+    <button class="close" id="drawerClose">✕</button>
+    <h3 id="drawerName">–</h3>
+    <div class="meta" id="drawerMeta"></div>
+  </div>
+  <div class="qa-list" id="drawerQaList"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getFirestore, collection, query, orderBy, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDNOUXZfLrezgDvPSLQHNW_UEF6GpsDUpE",
+    authDomain: "duck-b1970.firebaseapp.com",
+    databaseURL: "https://duck-b1970-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "duck-b1970",
+    storageBucket: "duck-b1970.firebasestorage.app",
+    messagingSenderId: "1012839748227",
+    appId: "1:1012839748227:web:875d5e0aca15160208c1b6",
+    measurementId: "G-90LF65BHKS"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const QUESTIONS = [
+    "Bạn cảm thấy áp lực trước các bài kiểm tra và kỳ thi.",
+    "Khối lượng bài tập khiến bạn khó cân bằng giữa học tập và nghỉ ngơi.",
+    "Bạn thường lo lắng khi kết quả học tập không đạt như mong muốn.",
+    "Sự cạnh tranh thành tích trong lớp khiến bạn cảm thấy căng thẳng.",
+    "Việc học hiện nay khiến bạn thường xuyên chịu nhiều áp lực.",
+    "Gia đình mong muốn bạn đạt kết quả học tập tốt.",
+    "Bạn cảm thấy áp lực khi gia đình quan tâm nhiều đến điểm số của mình.",
+    "Bạn sợ làm gia đình thất vọng nếu kết quả học tập không tốt.",
+    "Gia đình thường động viên bạn phải cố gắng hơn trong học tập.",
+    "Bạn luôn cố gắng học tốt để đáp lại sự kỳ vọng của gia đình.",
+    "Bạn thường so sánh kết quả học tập của mình với bạn bè.",
+    "Thành tích của bạn bè khiến bạn cảm thấy áp lực.",
+    "Những hình ảnh về thành công trên mạng xã hội khiến bạn cảm thấy mình còn thua kém.",
+    "Bạn quan tâm đến cách người khác đánh giá năng lực của mình.",
+    "Bạn luôn cố gắng để không bị tụt lại phía sau so với bạn bè.",
+    "Bạn có người mà mình tin tưởng để chia sẻ khi gặp áp lực.",
+    "Gia đình luôn lắng nghe khi bạn gặp khó khăn.",
+    "Bạn bè sẵn sàng động viên và hỗ trợ bạn khi cần.",
+    "Thầy cô sẵn sàng giúp đỡ khi bạn gặp khó khăn trong học tập hoặc cuộc sống.",
+    "Bạn biết tìm kiếm sự hỗ trợ phù hợp khi bản thân cảm thấy quá áp lực.",
+    "Bạn thường tỏ ra bình thường dù bên trong đang rất áp lực.",
+    "Bạn cố gắng che giấu sự mệt mỏi hoặc lo lắng của mình.",
+    "Bạn ngại chia sẻ với người khác khi gặp khó khăn.",
+    "Bạn luôn cố gắng duy trì hình ảnh một học sinh ổn định và học tốt trước mọi người.",
+    "Bạn thường nói \"tôi ổn\" dù thực tế bản thân đang không ổn.",
+    "Bạn vẫn tiếp tục cố gắng học tập dù bản thân đã rất mệt mỏi.",
+    "Bạn sợ người khác đánh giá mình yếu kém nếu biết tôi đang chịu áp lực.",
+    "Bạn cảm thấy mình phải luôn mạnh mẽ trước người khác dù bên trong rất mệt mỏi."
+  ];
+
+  // 5 nhóm yếu tố, mỗi nhóm là 1 khoảng chỉ số câu hỏi (0-based, inclusive start, exclusive end)
+  const CATEGORIES = [
+    { label: "Áp lực học tập", range: [0, 5] },
+    { label: "Kỳ vọng gia đình", range: [5, 10] },
+    { label: "So sánh xã hội", range: [10, 15] },
+    { label: "Hỗ trợ tâm lý – xã hội", range: [15, 20] },
+    { label: "Duck Effect", range: [20, 28] }
+  ];
+
+  let allRows = [];
+  let donutChart = null;
+  let barChart = null;
+
+  const q = query(collection(db, "duckcare_responses"), orderBy("score", "desc"));
+  onSnapshot(q, (snap) => {
+    allRows = [];
+    snap.forEach((doc) => allRows.push({ id: doc.id, ...doc.data() }));
+    renderStats();
+    renderCharts();
+    renderList();
+  }, (err) => {
+    document.getElementById("tableWrap").innerHTML =
+      `<div class="empty-state"><div class="em">⚠️</div>Không tải được dữ liệu.<br><span style="font-size:12px">${err.message}</span></div>`;
+  });
+
+  function renderStats() {
+    document.getElementById("statTotal").textContent = allRows.length;
+    document.getElementById("statLvl1").textContent = allRows.filter(r => r.level === 1).length;
+    document.getElementById("statLvl2").textContent = allRows.filter(r => r.level === 2).length;
+    document.getElementById("statLvl3").textContent = allRows.filter(r => r.level === 3).length;
+  }
+
+  function renderCharts() {
+    const c1 = allRows.filter(r => r.level === 1).length;
+    const c2 = allRows.filter(r => r.level === 2).length;
+    const c3 = allRows.filter(r => r.level === 3).length;
+
+    const donutCtx = document.getElementById("levelDonut");
+    if (donutChart) donutChart.destroy();
+    donutChart = new Chart(donutCtx, {
+      type: "doughnut",
+      data: {
+        labels: ["Mức 1", "Mức 2", "Mức 3"],
+        datasets: [{
+          data: [c1, c2, c3],
+          backgroundColor: ["#15a85f", "#c68a1f", "#c1502e"],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "68%",
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 12 } } }
+        }
+      }
+    });
+
+    // Điểm trung bình mỗi nhóm yếu tố (chỉ tính trên các lượt có đủ 28 câu trả lời)
+    const withAnswers = allRows.filter(r => Array.isArray(r.answers) && r.answers.length === 28);
+    const catAverages = CATEGORIES.map(cat => {
+      if (withAnswers.length === 0) return 0;
+      const sums = withAnswers.map(r => {
+        const slice = r.answers.slice(cat.range[0], cat.range[1]);
+        return slice.reduce((a, b) => a + b, 0) / slice.length;
+      });
+      return sums.reduce((a, b) => a + b, 0) / sums.length;
+    });
+
+    const barCtx = document.getElementById("categoryBars");
+    if (barChart) barChart.destroy();
+    barChart = new Chart(barCtx, {
+      type: "bar",
+      data: {
+        labels: CATEGORIES.map(c => c.label),
+        datasets: [{
+          data: catAverages.map(v => Math.round(v * 100) / 100),
+          backgroundColor: "#15a85f",
+          borderRadius: 6,
+          maxBarThickness: 34
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { min: 0, max: 5, grid: { color: "#eceee9" }, ticks: { stepSize: 1 } },
+          y: { grid: { display: false }, ticks: { font: { size: 12 } } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  function levelBadge(level) {
+    const cls = level === 1 ? "lvl1" : level === 2 ? "lvl2" : "lvl3";
+    const label = level === 1 ? "Mức 1" : level === 2 ? "Mức 2" : "Mức 3";
+    return `<span class="badge ${cls}">${label}</span>`;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  function renderList() {
+    const wrap = document.getElementById("tableWrap");
+    if (allRows.length === 0) {
+      wrap.innerHTML = `<div class="empty-state"><div class="em">🦆</div>Chưa có học sinh nào hoàn thành khảo sát.</div>`;
+      return;
+    }
+
+    const rowsHtml = allRows.map((r, i) => `
+      <tr data-idx="${i}">
+        <td>
+          <div class="name-cell">${escapeHtml(r.dName || "(chưa rõ tên)")}</div>
+          <div class="id-cell">${escapeHtml(r.senderId || "")}</div>
+        </td>
+        <td>${levelBadge(r.level)}</td>
+        <td class="score-cell">${r.score ?? "–"}/140</td>
+      </tr>
+    `).join("");
+
+    const cardsHtml = allRows.map((r, i) => `
+      <div class="row-card" data-idx="${i}">
+        <div class="left">
+          <div class="name-cell">${escapeHtml(r.dName || "(chưa rõ tên)")}</div>
+          <div class="id-cell">${escapeHtml(r.senderId || "")}</div>
+        </div>
+        <div class="right">
+          ${levelBadge(r.level)}
+          <span class="score-cell">${r.score ?? "–"}/140</span>
+        </div>
+      </div>
+    `).join("");
+
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr><th>Học sinh</th><th>Mức</th><th>Điểm</th></tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div class="card-list">${cardsHtml}</div>
+    `;
+
+    wrap.querySelectorAll("[data-idx]").forEach((el) => {
+      el.addEventListener("click", () => openDrawer(allRows[Number(el.dataset.idx)]));
+    });
+  }
+
+  const overlay = document.getElementById("overlay");
+  const drawer = document.getElementById("drawer");
+
+  function openDrawer(row) {
+    document.getElementById("drawerName").textContent = row.dName || "(chưa rõ tên)";
+    document.getElementById("drawerMeta").textContent =
+      `${row.senderId || ""} · ${row.score ?? "–"}/140 · ${row.levelLabel || ""}`;
+
+    const answers = Array.isArray(row.answers) ? row.answers : [];
+    const qaHtml = QUESTIONS.map((q, i) => {
+      const val = answers[i];
+      const dots = [1,2,3,4,5].map(n =>
+        `<div class="a-dot ${n === val ? "active" : ""}">${n}</div>`
+      ).join("");
+      return `
+        <div class="qa-item">
+          <div class="q"><span class="qnum">${i+1}.</span>${escapeHtml(q)}</div>
+          <div class="a-scale">${dots}</div>
+        </div>
+      `;
+    }).join("");
+    document.getElementById("drawerQaList").innerHTML = qaHtml;
+
+    overlay.style.display = "block";
+    drawer.style.display = "block";
+  }
+
+  function closeDrawer() {
+    overlay.style.display = "none";
+    drawer.style.display = "none";
+  }
+  overlay.addEventListener("click", closeDrawer);
+  document.getElementById("drawerClose").addEventListener("click", closeDrawer);
+</script>
+</body>
+</html>
