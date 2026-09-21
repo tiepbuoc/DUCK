@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Duck Radar — Duck Care Space</title>
+<meta name="description" content="Bộ trắc nghiệm nhanh giúp bạn nhận diện mức độ áp lực tiềm ẩn của bản thân.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦆</text></svg>">
+<style>
+  .quiz-progress { margin-bottom: 18px; }
+  .quiz-progress__bar { height: 8px; border-radius: 999px; background: var(--pond-deep); overflow: hidden; }
+  .quiz-progress__fill { height: 100%; background: var(--butter); transition: width 0.3s ease; }
+  .quiz-progress__label { text-align: center; margin-top: 8px; font-size: 0.85rem; color: var(--ink-soft); }
+
+  #question-card { min-height: 320px; display:flex; flex-direction:column; justify-content:center; }
+  @media (max-width: 480px) { #question-card { min-height: 260px; } }
+
+  .q-option-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: var(--white);
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: all 0.15s ease;
+  }
+  .q-option-row:last-child { margin-bottom: 0; }
+  .q-option-row:hover { border-color: var(--butter-deep); }
+  .q-option-row input { position:absolute; opacity:0; pointer-events:none; }
+  .q-option-row .q-num {
+    width: 30px; height: 30px; flex-shrink:0;
+    border-radius: 50%; border: 1px solid var(--line); background: var(--pond);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-display); font-size: 0.95rem; color: var(--ink-soft);
+  }
+  .q-option-row .q-label { font-size: 0.96rem; }
+  .q-option-row.is-checked { background: var(--butter); border-color: var(--butter-deep); }
+  .q-option-row.is-checked .q-num { background: var(--white); color: var(--ink); border-color: var(--butter-deep); }
+  .q-option-row:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  @keyframes q-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  #question-card.is-animating { animation: q-fade-in 0.25s ease; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Bỏ qua, đến nội dung chính</a>
+
+<header class="site-header">
+  <div class="site-header__row">
+    <a class="brand" href="index.html">
+      <span class="brand__logo-slot">🦆</span>
+      Duck Care Space
+    </a>
+    <button class="nav-toggle" aria-label="Mở menu" aria-expanded="false">
+      <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><path d="M0 1h18M0 7h18M0 13h18" stroke="currentColor" stroke-width="1.6"/></svg>
+    </button>
+    <nav class="site-nav" aria-label="Điều hướng chính">
+      <a href="index.html">Trang chủ</a>
+      <a href="radar.html">Duck Radar</a>
+      <a href="calm.html">Hồ tĩnh lặng</a>
+      <a href="journal.html">Nhật ký 14 ngày</a>
+      <a href="whispers.html">Duck Whispers</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="section" style="padding-bottom:0;">
+    <div class="wrap wrap--narrow">
+      <p class="muted" style="margin-bottom:8px;">Module S — Self-Awareness</p>
+      <h1 style="font-size:clamp(1.8rem,4vw,2.6rem);">Duck Radar</h1>
+      <p>Trả lời thật với chính mình — không có câu đúng hay sai. Bài test mất khoảng 2 phút, kết quả hiện ra ngay khi bạn nộp bài, và câu trả lời của bạn là <strong>hoàn toàn ẩn danh</strong>.</p>
+    </div>
+  </section>
+
+  <!-- ---------- INTRO ---------- -->
+  <section class="section section--tight" id="intro-section">
+    <div class="wrap wrap--narrow">
+      <div class="card center">
+        <div style="font-size:2.4rem; margin-bottom:6px;">🦆</div>
+        <h3 style="margin-bottom:8px;">8 câu hỏi, khoảng 2 phút</h3>
+        <p style="margin:0 auto 20px;">Mỗi câu sẽ hiện lần lượt, bạn chọn mức phù hợp nhất rồi qua câu tiếp theo. Không có câu đúng hay sai — chỉ cần đúng với cảm nhận của bạn ngay lúc này.</p>
+        <button class="btn btn--primary" id="start-btn">Bắt đầu khảo sát</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- FORM ---------- -->
+  <section class="section section--tight" id="quiz-section" style="display:none;">
+    <div class="wrap wrap--narrow">
+      <div class="quiz-progress">
+        <div class="quiz-progress__bar"><div class="quiz-progress__fill" id="progress-fill"></div></div>
+        <div class="quiz-progress__label" id="progress-label">Câu 1 / 8</div>
+      </div>
+
+      <div class="card" id="question-card">
+        <div class="likert" id="likert-single" style="border:none; padding:0;">
+          <div class="likert__q" id="q-text" style="font-size:1.15rem; text-align:center; margin-bottom:22px;"></div>
+          <div class="likert__scale" id="q-options" role="radiogroup"></div>
+        </div>
+      </div>
+
+      <div class="row" style="justify-content:space-between; margin-top:20px;">
+        <button class="btn btn--ghost" id="prev-btn">← Câu trước</button>
+        <button class="btn btn--primary" id="next-btn" disabled>Câu tiếp theo →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- RESULT ---------- -->
+  <section class="section" id="result-section" style="display:none;">
+    <div class="wrap wrap--narrow">
+      <div class="card center" id="result-card">
+        <p class="muted" style="margin-bottom:6px;">Kết quả của bạn</p>
+        <div id="result-badge"></div>
+        <p id="result-score" class="muted" style="margin-top:14px;"></p>
+        <div id="result-advice" style="text-align:left; margin-top:20px;"></div>
+        <div class="row center" style="justify-content:center; margin-top:24px;">
+          <a href="calm.html" class="btn btn--primary">Đến Hồ tĩnh lặng</a>
+          <a href="index.html" class="btn btn--ghost">Về trang chủ</a>
+        </div>
+        <p id="sync-status" class="muted" style="margin-top:18px; font-size:0.82rem;"></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+// ------------------------------------------------------------------
+// Bộ câu hỏi Duck Radar — thang Likert 1 (Hiếm khi) – 5 (Rất thường xuyên)
+// Điểm càng cao => mức "vùng vẫy ngầm" càng lớn.
+// ------------------------------------------------------------------
+const QUESTIONS = [
+  "Mình cảm thấy phải luôn tỏ ra ổn trước mặt người khác, dù bên trong không như vậy.",
+  "Mình lo lắng nếu điểm số hoặc kết quả không như kỳ vọng của bố mẹ, thầy cô.",
+  "Mình khó ngủ vì cứ nghĩ mãi về bài vở, deadline hoặc thành tích.",
+  "Mình so sánh bản thân với bạn bè và cảm thấy mình chưa đủ tốt.",
+  "Mình ngại chia sẻ khó khăn của mình vì sợ bị đánh giá hoặc làm người khác thất vọng.",
+  "Mình cảm thấy kiệt sức dù đã cố gắng nghỉ ngơi.",
+  "Mình nhận thêm việc hoặc hoạt động dù đã quá tải, vì sợ bị coi là kém cỏi.",
+  "Mình dần mất hứng thú với những điều từng khiến mình vui.",
+];
+
+const SCALE_LABELS = ["Hiếm khi", "Thỉnh thoảng", "Đôi lúc", "Thường xuyên", "Rất thường xuyên"];
+const answers = new Array(QUESTIONS.length).fill(null);
+let current = 0;
+
+const introSection = document.getElementById('intro-section');
+const quizSection = document.getElementById('quiz-section');
+const qText = document.getElementById('q-text');
+const qOptions = document.getElementById('q-options');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const progressFill = document.getElementById('progress-fill');
+const progressLabel = document.getElementById('progress-label');
+const questionCard = document.getElementById('question-card');
+
+function renderQuestion() {
+  qText.textContent = `${current + 1}. ${QUESTIONS[current]}`;
+  qOptions.innerHTML = '';
+  qOptions.style.display = 'block';
+
+  [1,2,3,4,5].forEach(v => {
+    const row = document.createElement('label');
+    row.className = 'q-option-row' + (answers[current] === v ? ' is-checked' : '');
+    row.innerHTML = `
+      <input type="radio" name="current-q" value="${v}" ${answers[current] === v ? 'checked' : ''}>
+      <span class="q-num">${v}</span>
+      <span class="q-label">${SCALE_LABELS[v-1]}</span>
+    `;
+    row.addEventListener('click', () => {
+      answers[current] = v;
+      renderQuestion();
+    });
+    qOptions.appendChild(row);
+  });
+
+  progressFill.style.width = `${((current) / QUESTIONS.length) * 100}%`;
+  progressLabel.textContent = `Câu ${current + 1} / ${QUESTIONS.length}`;
+  prevBtn.style.visibility = current === 0 ? 'hidden' : 'visible';
+  nextBtn.disabled = answers[current] === null;
+  nextBtn.textContent = current === QUESTIONS.length - 1 ? 'Xem kết quả' : 'Câu tiếp theo →';
+
+  questionCard.classList.remove('is-animating');
+  void questionCard.offsetWidth; // trigger reflow để chạy lại animation
+  questionCard.classList.add('is-animating');
+}
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  introSection.style.display = 'none';
+  quizSection.style.display = 'block';
+  renderQuestion();
+});
+
+prevBtn.addEventListener('click', () => {
+  if (current > 0) { current--; renderQuestion(); }
+});
+
+nextBtn.addEventListener('click', () => {
+  if (answers[current] === null) return;
+  if (current < QUESTIONS.length - 1) {
+    current++;
+    renderQuestion();
+  } else {
+    submitQuiz();
+  }
+});
+
+const RESULT_CONFIG = {
+  xanh: {
+    label: "Mức Xanh — Bình thường",
+    class: "result-badge--xanh",
+    advice: `
+      <p><strong>Bạn đang giữ được sự cân bằng khá tốt.</strong> Điều đó không có nghĩa là mọi thứ luôn hoàn hảo — hãy tiếp tục lắng nghe bản thân mỗi ngày.</p>
+      <ul>
+        <li>Duy trì các thói quen đang giúp bạn ổn định: giấc ngủ, vận động, kết nối bạn bè.</li>
+        <li>Ghé <a href="journal.html">Nhật ký 14 ngày</a> để nuôi dưỡng thêm những thói quen nhỏ tích cực.</li>
+        <li>Nếu có lúc cảm thấy chông chênh, <a href="calm.html">Hồ tĩnh lặng</a> luôn ở đây.</li>
+      </ul>`
+  },
+  vang: {
+    label: "Mức Vàng — Áp lực tiềm ẩn",
+    class: "result-badge--vang",
+    advice: `
+      <p><strong>Có vẻ như bạn đang "chèo" khá nhiều dưới mặt nước.</strong> Đây là lúc tốt để chậm lại một chút, trước khi áp lực tích tụ thêm.</p>
+      <ul>
+        <li>Thử bài tập thở 4–7–8 tại <a href="calm.html">Hồ tĩnh lặng</a> ngay bây giờ — chỉ mất khoảng 2 phút.</li>
+        <li>Viết ra điều đang khiến bạn nặng lòng ở mục "Xả bọc suy nghĩ".</li>
+        <li>Cân nhắc chia sẻ với một người bạn tin tưởng, hoặc gửi tâm sự ẩn danh tại <a href="whispers.html">Duck Whispers</a>.</li>
+      </ul>`
+  },
+  do: {
+    label: "Mức Đỏ — Kiệt sức, cần được hỗ trợ",
+    class: "result-badge--do",
+    advice: `
+      <p><strong>Bạn đang gồng mình nhiều hơn mức một người nên chịu đựng một mình.</strong> Điều này không phải là yếu đuối — đây là tín hiệu cơ thể và tâm trí bạn đang cần được lắng nghe thật sự.</p>
+      <ul>
+        <li>Hãy tìm đến giáo viên chủ nhiệm, phòng tâm lý học đường, hoặc một người lớn bạn tin tưởng <strong>trong hôm nay</strong> — bạn không cần tự mình vượt qua điều này.</li>
+        <li>Trong lúc chờ được hỗ trợ, bài thở tại <a href="calm.html">Hồ tĩnh lặng</a> có thể giúp bạn dịu lại tạm thời.</li>
+        <li>Nếu chưa sẵn sàng nói trực tiếp, bạn có thể bắt đầu bằng một dòng ẩn danh ở <a href="whispers.html">Duck Whispers</a>.</li>
+      </ul>`
+  }
+};
+
+function classify(score) {
+  if (score <= 18) return 'xanh';
+  if (score <= 29) return 'vang';
+  return 'do';
+}
+
+function submitQuiz() {
+  nextBtn.disabled = true;
+  nextBtn.textContent = 'Đang xử lý…';
+
+  const score = answers.reduce((sum, v) => sum + (v || 0), 0);
+  const level = classify(score);
+  const cfg = RESULT_CONFIG[level];
+
+  quizSection.style.display = 'none';
+  const resultSection = document.getElementById('result-section');
+  resultSection.style.display = 'block';
+  document.getElementById('result-badge').innerHTML =
+    `<span class="result-badge ${cfg.class}">${cfg.label}</span>`;
+  document.getElementById('result-score').textContent = `Điểm số: ${score} / 40`;
+  document.getElementById('result-advice').innerHTML = cfg.advice;
+  resultSection.scrollIntoView({ behavior: 'smooth' });
+
+  // Đồng bộ ẩn danh lên Firestore — KHÔNG gửi kèm bất kỳ thông tin định danh nào.
+  const statusEl = document.getElementById('sync-status');
+  db.collection('radar_results').add({
+    score: score,
+    level: level,                       // 'xanh' | 'vang' | 'do'
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    sessionRef: duckAnonId(),           // mã phiên ngẫu nhiên, không định danh cá nhân
+  }).then(() => {
+    statusEl.textContent = 'Đã ghi nhận kết quả (ẩn danh) phục vụ thống kê nghiên cứu.';
+  }).catch(err => {
+    console.error('Lỗi đồng bộ Firestore:', err);
+    statusEl.textContent = 'Kết quả của bạn vẫn hiển thị bình thường, nhưng chưa đồng bộ được lên hệ thống thống kê.';
+  });
+}
+</script>
+</body>
+</html>
